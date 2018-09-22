@@ -52,7 +52,7 @@ async function getAllChannels (url) {
     
     let entries = [];
     let postleitzahlen = fs.readFileSync('plz.txt').toString().split("\n");
-    let postleitzahlCounter = 3265;
+    let postleitzahlCounter = 0;
     while(stillResults){
         let html;
         let plz = postleitzahlen[postleitzahlCounter];
@@ -100,7 +100,7 @@ async function getAllChannels (url) {
                 dataSets = dataSets.concat(data);
                 console.log("Fetched " + setsCollected++ + " datasets...");
             }).catch((e) => {
-                console.log("error in receiving data for plz: " + plz + "Error: " + e);
+                console.log("error in receiving data for plz: " + setsCollected++ + "Error: " + e);
             })
             if(setsCollected % 1000 == 0) {
                 saveResults(dataSets, `${postleitzahlCounter}-${setsCollected}`);
@@ -214,4 +214,4 @@ function decrypt(ket) {
     }
     return s;
 }
-getAllChannels("https://dasauge.de/profile/konzepter/");
+getAllChannels("https://dasauge.de/profile/multimedia/");
