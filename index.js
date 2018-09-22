@@ -16,7 +16,7 @@ let parseDOM = (html) => {
 
 //gets html
 let getURL = (url) => {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
         request(url, function (error, response, body) {
             if(error){
                 reject('error:', error);
@@ -44,6 +44,7 @@ async function asyncForEach(array, callback) {
       await callback(array[index], index, array)
     }
   }
+const delay = ms => new Promise(res => setTimeout(res, ms));
 //returns list with channels
 async function getAllChannels (url) {
     let stillResults = true;
@@ -51,27 +52,42 @@ async function getAllChannels (url) {
     
     let entries = [];
     let postleitzahlen = fs.readFileSync('plz.txt').toString().split("\n");
-    let postleitzahlCounter = 200;
+    let postleitzahlCounter = 3265;
     while(stillResults){
         let html;
         let plz = postleitzahlen[postleitzahlCounter];
         if(counter < 2){
-            html = await getURL(url + `?plz=${plz}&sort=edat&umkreis=0`);
+            try {
+                html = await getURL(url + `?plz=${plz}&sort=edat&umkreis=0`);
+            } catch(e) {
+                await delay(5000);
+                html = "";
+                console.log("error in receiving data for plz: " + plz);
+            }
             console.log(plz);
         } else {
-            html = await getURL(url + "s" + counter + `?plz=${plz}&sort=edat&umkreis=0`);
+            try {
+                html = await getURL(url + "s" + counter + `?plz=${plz}&sort=edat&umkreis=0`);
+            } catch(e) {
+                await delay(5000);
+                html = "";
+                console.log("error in receiving data for plz: " + plz);
+            }
             console.log(plz);
         }
         let result = parseDOM(html);
-        if(result.length ==  0 || entries.includes(result[0])){
+        if(result.length < 15 || entries.includes(result[0])){
             counter = 1;
             postleitzahlCounter++;
-            if(postleitzahlCounter == 1000) stillResults = false;
+            if(result.length > 0 && !entries.includes(result[0])){
+                entries = entries.concat(result);
+                console.log("Scrapped " + entries.length + " entries...");
+            }
+            if(postleitzahlen.length == postleitzahlCounter) stillResults = false;
         }else{
             counter++;
             entries = entries.concat(result);
-            console.log("Scrapped " + entries.length + " entries...")
-            //TESTING SO NOT ALL GET SCRAPED
+            console.log("Scrapped " + entries.length + " entries...");
         }       
     }
     let dataSets = [];
@@ -84,10 +100,13 @@ async function getAllChannels (url) {
                 dataSets = dataSets.concat(data);
                 console.log("Fetched " + setsCollected++ + " datasets...");
             }).catch((e) => {
-                console.log(e);
+                console.log("error in receiving data for plz: " + plz + "Error: " + e);
             })
+            if(setsCollected % 1000 == 0) {
+                saveResults(dataSets, `${postleitzahlCounter}-${setsCollected}`);
+            }
         })
-        saveResults(dataSets, `${postleitzahlCounter}/${setsCollected}`);
+        saveResults(dataSets, `${postleitzahlCounter}-${setsCollected}`);
     }
     start();
 }
@@ -195,5 +214,4 @@ function decrypt(ket) {
     }
     return s;
 }
-getAllChannels("https://dasauge.de/profile/agenturen/");
-//console.log(getAllInfoListing("https://dasauge.de/-ag-visualisierung/"));
+getAllChannels("https://dasauge.de/profile/konzepter/");
